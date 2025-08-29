@@ -5,24 +5,21 @@ from bs4 import BeautifulSoup
 from transformers import pipeline
 import streamlit as st
 
-# --- Config ---
 MODEL_NAME = os.getenv("MODEL_NAME", "sshleifer/distilbart-cnn-12-6")
+
 @st.cache_resource
 def get_summarizer():
     return pipeline("summarization", model=MODEL_NAME)
 
-# --- Helper functions ---
 def extract_text_from_url(url, timeout=20):
     try:
         resp = requests.get(url, timeout=timeout, headers={"User-Agent": "Mozilla/5.0"})
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # Gather paragraphs
         paragraphs = [p.get_text().strip() for p in soup.find_all("p") if p.get_text().strip()]
         article_text = " ".join(paragraphs)
 
-        # Gather images
         image_urls = []
         for img in soup.find_all("img"):
             src = img.get("src") or img.get("data-src") or img.get("data-lazy-src")
@@ -33,10 +30,9 @@ def extract_text_from_url(url, timeout=20):
     except Exception:
         return "", []
 
-
 def chunk_text(text, max_chars=1000):
     import re
-    sentences = re.split(r'(?<=[.!?])\\s+', text)
+    sentences = re.split(r'(?<=[.!?])\s+', text)
     chunks, current, length = [], [], 0
     for s in sentences:
         if length + len(s) <= max_chars or not current:
@@ -67,9 +63,8 @@ def summarize_long_text(text):
     combined = " ".join(summaries)
     return summarizer(combined, max_length=150, min_length=30, do_sample=False)[0]["summary_text"]
 
-# --- Streamlit UI ---
 st.set_page_config(page_title="Fast Fresh Facts", layout="wide")
-st.title("⚡ Fast Fresh Facts")
+st.title("Fast Fresh Facts")
 st.write("Paste a news article URL and get a short summary.")
 
 url = st.text_input("Enter article URL:")
