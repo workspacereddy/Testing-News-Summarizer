@@ -2,7 +2,6 @@ import os
 import requests
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
-from newspaper import Article
 from transformers import pipeline
 import streamlit as st
 
@@ -15,34 +14,25 @@ def get_summarizer():
 # --- Helper functions ---
 def extract_text_from_url(url, timeout=20):
     try:
-        article = Article(url)
-        article.download()
-        article.parse()
-        article_text = article.text or ""
+        resp = requests.get(url, timeout=timeout, headers={"User-Agent": "Mozilla/5.0"})
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
 
-        if not article_text.strip():
-            resp = requests.get(url, timeout=timeout)
-            resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, "html.parser")
-            paragraphs = [p.get_text().strip() for p in soup.find_all("p") if p.get_text().strip()]
-            article_text = " ".join(paragraphs)
-        else:
-            soup = BeautifulSoup(article.html or "", "html.parser")
-            if not soup.find_all():
-                resp = requests.get(url, timeout=timeout)
-                resp.raise_for_status()
-                soup = BeautifulSoup(resp.text, "html.parser")
+        # Gather paragraphs
+        paragraphs = [p.get_text().strip() for p in soup.find_all("p") if p.get_text().strip()]
+        article_text = " ".join(paragraphs)
 
+        # Gather images
         image_urls = []
         for img in soup.find_all("img"):
             src = img.get("src") or img.get("data-src") or img.get("data-lazy-src")
             if src and not src.startswith("data:"):
-                src = urljoin(url, src)
-                image_urls.append(src)
+                image_urls.append(urljoin(url, src))
 
-        return article_text, list(dict.fromkeys(image_urls))  # deduplicate
+        return article_text, list(dict.fromkeys(image_urls))
     except Exception:
         return "", []
+
 
 def chunk_text(text, max_chars=1000):
     import re
