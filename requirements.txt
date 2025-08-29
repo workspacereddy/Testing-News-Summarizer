@@ -1,6 +1,5 @@
 streamlit
 transformers>=4.0
 torch
-newspaper3k
 beautifulsoup4
 requests
